@@ -1,7 +1,12 @@
 from pages.base_page import BasePage
 from locators.locators import OrderFeedPageLocators as OFPL
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 class OrderFeedPage(BasePage):
+    def __init__(self, driver):
+        super().__init__(driver)
+
     def click_on_order(self):
         self.click_element(OFPL.ORDER_ITEM)
         return self
@@ -11,7 +16,12 @@ class OrderFeedPage(BasePage):
 
     def get_all_orders_numbers(self):
         elements = self.driver.find_elements(*OFPL.ORDER_NUMBERS)
-        return [el.text for el in elements]
+        numbers = []
+        for el in elements:
+            text = el.text
+            clean_text = text.replace('#', '').strip()
+            numbers.append(clean_text)
+        return numbers
 
     def get_completed_counter_all_time(self):
         return self.get_text_from_element(OFPL.COMPLETED_ALL_TIME_COUNTER)

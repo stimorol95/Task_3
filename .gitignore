@@ -17,10 +17,6 @@ __pycache__/
 *.pyd
 .pytest_cache/
 
-# Reports
-allure_results/
-allure-json/
-
 # Environment variables
 .env
 pytest.ini

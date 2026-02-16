@@ -1,6 +1,9 @@
-import allure
+import allure, time
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from pages.main_page import MainPage
 from pages.login_page import LoginPage
+from locators.locators import MainPageLocators as MPL
 
 @allure.feature("Конструктор")
 class TestConstructor:
@@ -28,23 +31,32 @@ class TestConstructor:
     def test_modal_closes_by_cross(self, driver):
         main_page = MainPage(driver)
         main_page.click_on_ingredient()
+        time.sleep(5)
         main_page.close_modal_window()
         assert not main_page.is_modal_window_displayed()
 
-    @allure.title("При добавлении ингредиента в заказ увеличивается каунтер")
-    def test_ingredient_counter_increases(self, driver):
+    @allure.title("Залогиненный пользователь может оформить заказ с булкой и мясом")
+    def test_create_order_with_bun_and_meat(self, driver, registered_user):
         main_page = MainPage(driver)
-        initial_count = main_page.get_ingredient_counter_value()
-        main_page.add_ingredient_to_order()
-        new_count = main_page.get_ingredient_counter_value()
-        assert new_count > initial_count
-
-    @allure.title("Залогиненный пользователь может оформить заказ")
-    def test_authorized_user_can_place_order(self, driver, registered_user):
+        main_page.click_login_button_on_main()
+        login_page = LoginPage(driver)
+        login_page.login(registered_user['email'], registered_user['password'])
         main_page = MainPage(driver)
-        login_page = main_page.click_login_button_on_main()
-        main_page = login_page.login(registered_user['email'], registered_user['password'])
-        main_page.add_ingredient_to_order()
+        main_page.add_bun_to_constructor(MPL.BUN_INGREDIENT, "top")
+        main_page.drag_ingredient_to_constructor(MPL.MEAT_INGREDIENT)
         main_page.click_place_order_button()
+        time.sleep(5)
         order_id = main_page.get_order_id_from_popup()
         assert order_id.isdigit()
+        
+    @allure.title("При добавлении ингредиента в заказ увеличивается каунтер данного ингредиента")
+    def test_ingredient_counter_increases(self, driver):
+        main_page = MainPage(driver)
+        meat_locator = MPL.BUN_INGREDIENT
+        initial_count = main_page.get_ingredient_counter(meat_locator)
+        main_page.add_bun_to_constructor(meat_locator)
+        def counter_changed(_):
+            return main_page.get_ingredient_counter(meat_locator) != initial_count
+        WebDriverWait(driver, 10).until(counter_changed)
+        new_count = main_page.get_ingredient_counter(meat_locator)
+        assert new_count > initial_count
