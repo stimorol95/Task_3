@@ -1,6 +1,4 @@
-import allure, time
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import allure
 from pages.main_page import MainPage
 from pages.login_page import LoginPage
 from pages.order_feed_page import OrderFeedPage
@@ -12,75 +10,61 @@ class TestOrderFeed:
     def test_order_modal_appears(self, driver, registered_user):
         main_page = MainPage(driver)
         main_page.click_login_button_on_main()
-        login_page = LoginPage(driver)
-        login_page.login(registered_user['email'], registered_user['password'])
+        LoginPage(driver).login(registered_user['email'], registered_user['password'])
         main_page = MainPage(driver)
         main_page.add_bun_to_constructor(MPL.BUN_INGREDIENT, "top")
         main_page.drag_ingredient_to_constructor(MPL.MEAT_INGREDIENT)
         main_page.click_place_order_button()
+        main_page.wait_for_visibility(MPL.MODAL_WINDOW)
+        main_page.wait_for_element_text_not_equal(MPL.ORDER_ID_IN_MODAL, "9999")
         main_page.close_modal_if_present()
-        time.sleep(5)
         main_page.click_on_order_feed()
-        time.sleep(5)
         order_feed_page = OrderFeedPage(driver)
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located(OFPL.ORDER_ITEM))
+        order_feed_page.wait_for_visibility(OFPL.ORDER_ITEM, 15)
         order_feed_page.click_on_order()
+        order_feed_page.wait_for_visibility(OFPL.ORDER_MODAL, 10)
         assert order_feed_page.is_order_modal_displayed()
 
     @allure.title("Заказы пользователя из раздела 'История заказов' отображаются на странице 'Лента заказов'")
     def test_user_orders_in_feed(self, driver, registered_user):
         main_page = MainPage(driver)
         main_page.click_login_button_on_main()
-        login_page = LoginPage(driver)
-        login_page.login(registered_user['email'], registered_user['password'])
+        LoginPage(driver).login(registered_user['email'], registered_user['password'])
         main_page = MainPage(driver)
         main_page.add_bun_to_constructor(MPL.BUN_INGREDIENT, "top")
         main_page.drag_ingredient_to_constructor(MPL.MEAT_INGREDIENT)
         main_page.click_place_order_button()
-        time.sleep(4.75)
+        main_page.wait_for_visibility(MPL.MODAL_WINDOW)
+        main_page.wait_for_element_text_not_equal(MPL.ORDER_ID_IN_MODAL, "9999")
         order_id = main_page.get_order_id_from_popup()
-        print(f"Original order ID: {order_id}")
-        order_id_with_zeros = order_id.zfill(7)
-        print(f"Order ID with zeros (7 digits): {order_id_with_zeros}")
         main_page.close_modal_if_present()
-        WebDriverWait(driver, 15).until(
-            EC.element_to_be_clickable(MPL.ORDER_FEED_LINK)
-        )
         main_page.click_on_order_feed()
         order_feed_page = OrderFeedPage(driver)
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located(OFPL.ORDER_NUMBERS)
-        )
+        order_feed_page.wait_for_visibility(OFPL.ORDER_NUMBERS, 15)
         orders = order_feed_page.get_all_orders_numbers()
-        print(f"Orders in feed: {orders}")
-        assert order_id_with_zeros in orders, f"Order {order_id_with_zeros} not found in {orders}"
+        assert order_id in orders, f"Заказ {order_id} не найден в ленте: {orders}"
 
     @allure.title("При создании нового заказа счётчик 'Выполнено за всё время' увеличивается")
     def test_completed_all_time_counter_increases(self, driver, registered_user):
         main_page = MainPage(driver)
         main_page.click_login_button_on_main()
-        login_page = LoginPage(driver)
-        login_page.login(registered_user['email'], registered_user['password'])
+        LoginPage(driver).login(registered_user['email'], registered_user['password'])
         main_page = MainPage(driver)
-        time.sleep(5)
         main_page.click_on_order_feed()
         order_feed_page = OrderFeedPage(driver)
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located(OFPL.COMPLETED_ALL_TIME_COUNTER)
-        )
+        order_feed_page.wait_for_visibility(OFPL.COMPLETED_ALL_TIME_COUNTER)
         initial_value = int(order_feed_page.get_completed_counter_all_time())
         main_page = MainPage(driver)
         main_page.click_on_constructor()
         main_page.add_bun_to_constructor(MPL.BUN_INGREDIENT, "top")
         main_page.drag_ingredient_to_constructor(MPL.MEAT_INGREDIENT)
         main_page.click_place_order_button()
-        time.sleep(5)
+        main_page.wait_for_visibility(MPL.MODAL_WINDOW)
+        main_page.wait_for_element_text_not_equal(MPL.ORDER_ID_IN_MODAL, "9999")
         main_page.close_modal_if_present()
         main_page.click_on_order_feed()
         order_feed_page = OrderFeedPage(driver)
-        WebDriverWait(driver, 10).until(
-            lambda d: int(order_feed_page.get_completed_counter_all_time()) > initial_value
-        )
+        order_feed_page.wait_for_visibility(OFPL.COMPLETED_ALL_TIME_COUNTER)
         new_value = int(order_feed_page.get_completed_counter_all_time())
         assert new_value > initial_value
 
@@ -88,29 +72,23 @@ class TestOrderFeed:
     def test_completed_today_counter_increases(self, driver, registered_user):
         main_page = MainPage(driver)
         main_page.click_login_button_on_main()
-        login_page = LoginPage(driver)
-        login_page.login(registered_user['email'], registered_user['password'])
+        LoginPage(driver).login(registered_user['email'], registered_user['password'])
         main_page = MainPage(driver)
-        time.sleep(5)
         main_page.click_on_order_feed()
         order_feed_page = OrderFeedPage(driver)
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located(OFPL.COMPLETED_TODAY_COUNTER)
-        )
+        order_feed_page.wait_for_visibility(OFPL.COMPLETED_TODAY_COUNTER)
         initial_today = int(order_feed_page.get_completed_counter_today())
         main_page = MainPage(driver)
         main_page.click_on_constructor()
         main_page.add_bun_to_constructor(MPL.BUN_INGREDIENT, "top")
         main_page.drag_ingredient_to_constructor(MPL.MEAT_INGREDIENT)
         main_page.click_place_order_button()
-        time.sleep(5)
+        main_page.wait_for_visibility(MPL.MODAL_WINDOW)
+        main_page.wait_for_element_text_not_equal(MPL.ORDER_ID_IN_MODAL, "9999")
         main_page.close_modal_if_present()
-        time.sleep(5)
         main_page.click_on_order_feed()
         order_feed_page = OrderFeedPage(driver)
-        WebDriverWait(driver, 10).until(
-            lambda d: int(order_feed_page.get_completed_counter_today()) > initial_today
-        )
+        order_feed_page.wait_for_visibility(OFPL.COMPLETED_TODAY_COUNTER)
         new_today = int(order_feed_page.get_completed_counter_today())
         assert new_today > initial_today
 
@@ -118,20 +96,17 @@ class TestOrderFeed:
     def test_order_number_appears_in_work(self, driver, registered_user):
         main_page = MainPage(driver)
         main_page.click_login_button_on_main()
-        login_page = LoginPage(driver)
-        login_page.login(registered_user['email'], registered_user['password'])
+        LoginPage(driver).login(registered_user['email'], registered_user['password'])
+        main_page = MainPage(driver)
         main_page.add_bun_to_constructor(MPL.BUN_INGREDIENT, "top")
         main_page.drag_ingredient_to_constructor(MPL.MEAT_INGREDIENT)
         main_page.click_place_order_button()
-        time.sleep(5)
+        main_page.wait_for_visibility(MPL.MODAL_WINDOW)
+        main_page.wait_for_element_text_not_equal(MPL.ORDER_ID_IN_MODAL, "9999")
         order_id = main_page.get_order_id_from_popup()
         main_page.close_modal_if_present()
         main_page.click_on_order_feed()
-        time.sleep(5)
         order_feed_page = OrderFeedPage(driver)
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located(OFPL.ORDERS_IN_WORK_LIST)
-        )
+        order_feed_page.wait_for_orders_in_work_not_empty(15)
         orders_in_work = order_feed_page.get_orders_in_work()
-        print(f"Orders in work: {orders_in_work}")
         assert order_id in orders_in_work
