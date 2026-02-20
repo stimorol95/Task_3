@@ -114,7 +114,7 @@ class MainPage(BasePage):
     @allure.step("Добавление ингредиента в заказ")
     def add_ingredient_to_order(self):
         """Добавляет начинку в заказ."""
-        self.drag_ingredient_by_index(3)  # индекс для начинки
+        self.drag_ingredient_by_index(3)
         return self
 
     @allure.step("Переход в ленту заказов через JavaScript")

@@ -24,11 +24,6 @@ class LoginPage(BasePage):
     def wait_for_visibility_of_login_button(self, time=10):
         self.wait_for_visibility(LPL.LOGIN_BUTTON, time)
 
-    @allure.step("Ожидание появления кнопки входа")
-    def wait_for_login_button(self, time=10):
-        """Ожидает появления кнопки входа на странице."""
-        self.wait_for_visibility(LPL.LOGIN_BUTTON, time)    
-
     @allure.step("Ожидание кнопки входа")
     def wait_for_login_button(self, timeout=10):
         """Ожидает появления кнопки входа."""
