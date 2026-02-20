@@ -1,7 +1,6 @@
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
-from locators.locators import MainPageLocators as MPL
 import allure
 
 class BasePage:
@@ -61,23 +60,30 @@ class BasePage:
             f"Элемент {locator} все еще видим за {time} секунд"
         )
 
-    @allure.step("Ожидание изменения текста элемента")
-    def wait_for_text_change(self, locator, old_text, time=10):
-        def text_changed(driver):
-            current_text = self.get_text_from_element(locator, 1)
-            return current_text != old_text
+    @allure.step("Ожидание, что текст элемента {locator} не равен {text}")
+    def wait_for_element_text_not_equal(self, locator, text, time=10):
+        def text_not_equal(driver):
+            element_text = self.get_text_from_element(locator, 1)
+            return element_text != text
         return WebDriverWait(self.driver, time).until(
-            text_changed,
-            f"Текст элемента {locator} не изменился за {time} секунд"
+            text_not_equal,
+            f"Текст элемента {locator} все еще равен '{text}' через {time} секунд"
         )
 
     @allure.step("Ожидание изменения значения счетчика")
-    def wait_for_counter_change(self, locator, get_counter_func, initial_value, time=10):
+    def wait_for_counter_change(self, get_counter_func, initial_value, time=10):
         def counter_changed(driver):
-            return get_counter_func(locator) != initial_value
+            return get_counter_func() != initial_value
         return WebDriverWait(self.driver, time).until(
             counter_changed,
-            f"Счетчик {locator} не изменился за {time} секунд"
+            f"Счетчик не изменился за {time} секунд"
+        )
+
+    @allure.step("Ожидание выполнения условия")
+    def wait_for_condition(self, condition_func, message, time=10):
+        return WebDriverWait(self.driver, time).until(
+            lambda driver: condition_func(),
+            message
         )
 
     @allure.step("Получение атрибута {attribute} элемента {locator}")
@@ -101,20 +107,62 @@ class BasePage:
     def scroll_to_element(self, element):
         self.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
 
-    @allure.step("Ожидание, что текст элемента {locator} не равен {text}")
-    def wait_for_element_text_not_equal(self, locator, text, time=10):
-        def text_not_equal(driver):
-            element_text = self.get_text_from_element(locator, 1)
-            return element_text != text
-        return WebDriverWait(self.driver, time).until(
-            text_not_equal,
-            f"Текст элемента {locator} все еще равен '{text}' через {time} секунд")    
-    
-    @allure.step("Ожидание стабильности страницы (исчезновение overlay)")
-    def wait_for_page_stability(self, timeout=5):
-        """Ожидает исчезновения всех overlay элементов."""
-        try:
-            self.wait_for_invisibility(MPL.MODAL_OVERLAY, timeout)
-        except:
-            pass
+    @allure.step("Удаление overlay для Firefox")
+    def remove_overlay_for_firefox(self, overlay_locator=None, link_locator=None, time=5):
+        """
+        Удаляет overlay для Firefox с использованием явных ожиданий.
+        
+        Args:
+            overlay_locator: локатор overlay (если None, используется скрипт удаления)
+            link_locator: локатор ссылки для ожидания кликабельности
+            time: таймаут ожидания
+        """
+        if 'firefox' in self.driver.capabilities['browserName'].lower():
+            self.execute_script("""
+                var overlays = document.querySelectorAll('[class*="Modal_modal_overlay"]');
+                overlays.forEach(function(el) { el.remove(); });
+            """)
+            if overlay_locator:
+                try:
+                    self.wait_for_invisibility(overlay_locator, time)
+                except:
+                    pass
+            if link_locator:
+                try:
+                    self.wait_for_clickable(link_locator, time)
+                except:
+                    pass
         return self
+
+    @allure.step("Ожидание стабильности страницы")
+    def wait_for_page_stability(self, overlay_locator=None, time=5):
+        if overlay_locator:
+            try:
+                self.wait_for_invisibility(overlay_locator, time)
+            except:
+                pass
+        return self     
+
+    @allure.step("Ожидание изменения атрибута элемента")
+    def wait_for_attribute_change(self, locator, attribute, expected_value, time=10):
+        """Ожидает изменения атрибута элемента до ожидаемого значения."""
+        def attribute_changed():
+            current_value = self.get_element_attribute(locator, attribute)
+            return expected_value in current_value if expected_value else current_value
+        return self.wait_for_condition(attribute_changed, f"Атрибут {attribute} не изменился", time)  
+
+    @allure.step("Ожидание стабилизации страницы")
+    def wait_for_page_ready(self, timeout=5):
+        """Ожидает готовности страницы (все AJAX запросы завершены, DOM стабилен)."""
+        
+        script = """
+            return document.readyState === 'complete' && 
+                !window.jQuery?.active && 
+                !document.querySelector('[class*="Modal_modal_overlay"]');
+        """
+        
+        def page_ready():
+            return self.execute_script(script)
+        
+        self.wait_for_condition(page_ready, "Страница не готова", timeout)
+        return self 
